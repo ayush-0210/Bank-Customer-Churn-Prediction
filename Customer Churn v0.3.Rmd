@@ -20,7 +20,7 @@ ipak <- function(pkg){
   sapply(pkg, require, character.only = TRUE)
 }
 # usage
-packages <- c("ggplot2", "ISLR", "DataExplorer", "RColorBrewer", "dplyr", "data.table","rpart","randomForest","xgboost","DescTools","Hmisc","ggcorrplot")
+packages <- c("ggplot2", "ISLR", "DataExplorer", "RColorBrewer", "dplyr", "data.table","rpart","randomForest","xgboost","DescTools","Hmisc","ggcorrplot","MASS","tidyverse","caret","precrec")
 ipak(packages)
 
 options(scipen=999)
@@ -207,33 +207,56 @@ plotly::ggplotly(ggcorrplot(corr,outline.color = "black",colors = c("salmon","wh
 Almost all continuous variables are uncorrelated thereby satisfying absence of multicollinearity assumption of logistic regression.
 
 ```{r}
+#Check impactables with simple logistic regression
+model.glm <- glm(Exited~.,df,family = "binomial")
+summary(model.glm)
 
 
+```
+In addition to demographics such as age, gender and location,  actionable variables such as Credit score, Customer balance and active membership are strong predictors. Given above p-values might change as per number of variables, we try running stepwise regression to better understand best combination of features that we can use.
 
+```{r}
+step.model <- model.glm %>% stepAIC(trace = FALSE)
+cols <- names(coef(step.model))
+summary(step.model)
 
 ```
 
 
 ```{r}
+#Setting up train validation test 
+# Split the data into training and test set
+set.seed(123)
 
+training.samples <- df$Exited %>%  createDataPartition(p = 0.9,list = F)
+train.data  <- df[training.samples, ]
+test.data <- df[-training.samples, ]
 
+# Define training control
+train.control <- trainControl(## 10-fold repeated CV
+                           method = "repeatedcv",
+                           number = 10,repeats = 10)
+# Train the model
+train.data <- train.data[, colnames(train.data) %in% c(cols,"Exited")]
+test.data <- test.data[, colnames(test.data) %in% c(cols,"Exited")]
 
+cv_logit <- train(data = train.data, Exited~.,
+                 method = "glm", 
+                 family = "binomial",
+                 trControl = train.control)
+summary(cv_logit)
+
+PredTrain = predict(cv_logit, newdata=train.data[,!colnames(train.data) == "Exited"], type="prob")
+table(train.data$Exited, PredTrain[,2] > 0.5)
 
 ```
 
 
-```{r}
-
-
-
-
-```
-
-
-```{r}
-
-
-
+```{r fig.width=6.5, fig.height=5.5}
+precrec_obj <- evalmod(scores = PredTrain[,2], labels = train.data$Exited)
+autoplot(precrec_obj)
+#precrec_obj <- evalmod(scores = PredTrain[,2], labels = train.data$Exited,mode="basic")
+#autoplot(precrec_obj)
 
 ```
 
