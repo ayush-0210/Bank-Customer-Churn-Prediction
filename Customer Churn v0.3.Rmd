@@ -184,6 +184,14 @@ plotly::ggplotly(ggplot(df, aes(x=Age,fill=Exited),size=1.3) +
 #ggplot(df, aes(x=NumOfProducts, color=Exited)) + geom_density()+scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+labs(title = "Density Plot: #Products")
 
 ```
+```{r include=FALSE}
+df$Exited <- as.factor(df$Exited)
+ggplot(df, aes(x=NumOfProducts, color=Exited)) +
+  geom_density()+
+  scale_color_manual(values=c("#999999", "#E69F00", "#56B4E9"))+
+  labs(title = "Density Plot: #Products")+xlab("Number of Products") + theme_custom()
+```
+
 Age may as well be a good predictor given the observable difference in mean Age for customers retained vs lost.
 
 ```{r}
@@ -204,7 +212,7 @@ corr <- round(cor(df[cols_num]), 2)
 plotly::ggplotly(ggcorrplot(corr,outline.color = "black",colors = c("salmon","white","skyblue2"),lab = T)+ggtitle("Correlation plot\n"))
 ```
 
-Almost all continuous variables are uncorrelated thereby satisfying absence of multicollinearity assumption of logistic regression.
+Almost all continuous variables are uncorrelated thereby satisfying absence of multi-collinearity assumption of logistic regression.
 
 ```{r}
 #Check impactables with simple logistic regression
