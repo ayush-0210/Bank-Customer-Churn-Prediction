@@ -20,7 +20,7 @@ ipak <- function(pkg){
   sapply(pkg, require, character.only = TRUE)
 }
 # usage
-packages <- c("ggplot2", "ISLR", "DataExplorer", "RColorBrewer", "dplyr", "data.table","rpart","randomForest","xgboost","DescTools","Hmisc","ggcorrplot","MASS","tidyverse","caret","precrec")
+packages <- c("ggplot2", "ISLR", "DataExplorer", "RColorBrewer", "dplyr", "data.table","rpart","randomForest","xgboost","DescTools","Hmisc","ggcorrplot","MASS","tidyverse","caret","precrec","Matrix","gbm","ROCR")
 ipak(packages)
 
 options(scipen=999)
@@ -330,8 +330,84 @@ OOSPred3 = table(churn.pred3,churn.test$Exited)
 accuracy3=(sum(diag(OOSPred3)))/sum(OOSPred3)
 accuracy3
 
+```{r}
+
+
+# Gradient Boosting Machines (GBM)
+
+df$Geography <- as.factor(df$Geography)
+df$Gender <- as.factor(df$Gender)
+df$HasCrCard <- as.factor(df$HasCrCard)
+df$IsActiveMember <- as.factor(df$IsActiveMember)
+
+
+set.seed(234)
+split_data <- createDataPartition(df$Exited, p=0.7, list = FALSE)
+train_data <- df[split_data,]
+test_data <- df[-split_data,]
+
+# GBM model without cross validation ; Important features: Age, Balance, NumOfProducts, EstimatedSalary
+
+gbmmodel <- gbm(Exited ~.,distribution="bernoulli",data=train_data,n.trees=1000,interaction.depth = 3)
+summary(gbmmodel)
+
+
+print(gbmmodel)
+
+# GBM model without cross validation ; Important features: Age, Balance, NumOfProducts, EstimatedSalary, CreditScore
+# With shrinkage (learning rate) the computation time increases and so does the number of trees. 
+# To counter the same we use a simple tree as a base model and interaction depth i.e. depth of trees as 3 to make the model less complex.
+
+gbmmodel1 <- gbm(Exited ~.,
+                 distribution="bernoulli",
+                 data=train_data,
+                 n.trees=1000,
+                 interaction.depth = 3,
+                 #shrinkage = 0.001,
+                 cv.folds = 3)
+                 
+summary(gbmmodel1)
+print(gbmmodel1)
+
+rmse = sqrt(min(gbmmodel1$cv.error))
+rmse
+
+optm_cv <- gbm.perf(gbmmodel1,method="cv")
+optm_oob <- gbm.perf(gbmmodel1,method="OOB")
+
+print(optm_cv)
+print(optm_oob)
+
+
+predictions <- predict(object = gbmmodel1,
+                       newdata = test_data,
+                       n.trees = optm_cv,
+                       type = "response")
+
+
+# Selecting cutoff probability of churn as 0.3.
+
+binarypredictions <- as.factor(ifelse(predictions>0.3,1,0))
+test_data$Exited <- as.factor(test_data$Exited)
+confusionMatrix(binarypredictions,test_data$Exited)
+
+gbm_pred_test <- prediction(predictions,test_data$Exited)
+gbm_roc_testing <- performance(gbm_pred_test,"tpr","fpr")
+plot(gbm_roc_testing)
+
+
+# AUC is 86.7% indicating a good separation between the two classes of churn
+
+auc_temp <- performance(gbm_pred_test,"auc")
+gbm_auc_testing <- as.numeric(auc_temp@y.values)
+gbm_auc_testing
 
 ```
+
+
+
+
+
 
 
 
