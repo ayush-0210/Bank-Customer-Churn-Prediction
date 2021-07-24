@@ -330,8 +330,9 @@ OOSPred3 = table(churn.pred3,churn.test$Exited)
 accuracy3=(sum(diag(OOSPred3)))/sum(OOSPred3)
 accuracy3
 
-```{r}
+```
 
+```{r}
 
 # Gradient Boosting Machines (GBM)
 
